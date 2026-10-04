@@ -1,0 +1,41 @@
+name: Build OnePlus 6T Kernel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Checkout Kernel Source
+      uses: actions/checkout@v3
+      with:
+        ref: oneplus/SDM845_R_11.0
+
+    - name: Setup Build Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential bc bison flex libssl-dev libncurses5-dev libncursesw5-dev libreadline-dev python3 libarchive-tools zip unzip git Clang gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
+
+    - name: Download AOSP Clang Toolchain
+      run: |
+        git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 --depth=1 -b master-kernel-build-2022 $HOME/clang
+
+    - name: Compile Kernel
+      run: |
+        export PATH="$HOME/clang/clang-r450784d/bin:$PATH"
+        export ARCH=arm64
+        export SUBARCH=arm64
+        export CROSS_COMPILE=aarch64-linux-gnu-
+        export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+        export CC=clang
+
+        make O=out sdm845_defconfig
+        make -j$(nproc --all) O=out
+
+    - name: Upload Compiled Kernel Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: OnePlus6T-OOS11-Kernel
+        path: out/arch/arm64/boot/Image.gz-dtb
